@@ -30,17 +30,17 @@ roles_shop = {
 # -----------------------
 LOCKDOWN_MSG = """
 ---------------------------------------
-⚠️ THIS SERVER IS UNDER LOCKDOWN ⚠️
+⚠️ * THIS SERVER IS UNDER LOCKDOWN ⚠️
 An admin user has issued this lockdown
 due to suspicious activity in the server
 Please do not panic and for more info
-contact your server's **Administrators!**
+contact your server's ** Administrators!
 ---------------------------------------
 """
 
 LIFTED_MSG = """
 ---------------------------------------
-✅ LOCKDOWN HAS BEEN LIFTED ✅
+✅ * LOCKDOWN HAS BEEN LIFTED ✅
 The server is now back to normal
 You may continue chatting freely
 Thank you for your patience
