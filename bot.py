@@ -4,7 +4,7 @@ import random
 import os
 
 # -----------------------
-# KEEP RENDER ALIVE
+# KEEP ALIVE (Render)
 # -----------------------
 from flask import Flask
 from threading import Thread
@@ -15,11 +15,11 @@ app = Flask('')
 def home():
     return "Bot is alive!"
 
-def run_web():
+def run():
     app.run(host='0.0.0.0', port=10000)
 
 def keep_alive():
-    t = Thread(target=run_web)
+    t = Thread(target=run)
     t.start()
 
 # -----------------------
@@ -34,74 +34,50 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-# -----------------------
-# BOT
-# -----------------------
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # -----------------------
-# COINS SYSTEM
+# DATA
 # -----------------------
 coins = {}
 
 # -----------------------
-# SHOP ROLES
+# SHOP DATA
 # -----------------------
-roles_shop = {
-    "blox": {
-        "role_id": 1502647506801000500,
-        "cost": 200
-    },
-
-    "sailor": {
-        "role_id": 1502647995798261800,
-        "cost": 350
-    },
-
-    "wealthy": {
-        "role_id": 1502648468664225792,
-        "cost": 700
-    }
+SHOP = {
+    "blox": {"role_id": 1502647506801000500, "cost": 200},
+    "sailor": {"role_id": 1502647995798261800, "cost": 350},
+    "wealthy": {"role_id": 1502648468664225792, "cost": 700},
 }
 
 # -----------------------
-# LOCKDOWN MESSAGES
+# MESSAGES
 # -----------------------
 LOCKDOWN_MSG = """
----------------------------------------
+-----------------------------
 ⚠️ THIS SERVER IS UNDER LOCKDOWN ⚠️
-An admin user has issued this lockdown
-due to suspicious activity in the server
-Please do not panic and for more info
-contact your server's Administrators!
----------------------------------------
+An admin has issued a lockdown due to suspicious activity.
+Please do not panic and contact administrators.
+-----------------------------
 """
 
 LIFTED_MSG = """
----------------------------------------
-✅ LOCKDOWN HAS BEEN LIFTED ✅
-The server is now back to normal
-You may continue chatting freely
-Thank you for your patience
----------------------------------------
+----------------------------
+✅ LOCKDOWN LIFTED
+The server is now back to normal.
+----------------------------
 """
 
 # -----------------------
-# READY EVENT
+# READY
 # -----------------------
 @bot.event
 async def on_ready():
-
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} slash commands.")
-    except Exception as e:
-        print(e)
-
+    await bot.tree.sync()
     print(f"Logged in as {bot.user}")
 
 # -----------------------
-# MESSAGE EVENT
+# COIN SYSTEM
 # -----------------------
 @bot.event
 async def on_message(message):
@@ -109,107 +85,29 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    user_id = message.author.id
-
-    # GIVE RANDOM COINS
-    coins[user_id] = coins.get(user_id, 0) + random.randint(3, 8)
+    coins[message.author.id] = coins.get(message.author.id, 0) + random.randint(3, 8)
 
 # -----------------------
 # /COINS
 # -----------------------
-@bot.tree.command(
-    name="coins",
-    description="Check your coins"
-)
+@bot.tree.command(name="coins", description="Check your coins")
 async def coinscmd(interaction: discord.Interaction):
 
     amount = coins.get(interaction.user.id, 0)
 
-    await interaction.response.send_message(
-        f"💰 You have {amount} coins"
-    )
+    await interaction.response.send_message(f"💰 You have {amount} coins")
 
 # -----------------------
-# /LOCKDOWN
-# -----------------------
-@bot.tree.command(
-    name="lockdown",
-    description="Lock the server"
-)
-async def lockdown(interaction: discord.Interaction):
-
-    if not interaction.user.guild_permissions.administrator:
-
-        await interaction.response.send_message(
-            "❌ Admin only.",
-            ephemeral=True
-        )
-        return
-
-    await interaction.response.send_message(
-        "🔒 Activating lockdown..."
-    )
-
-    for channel in interaction.guild.text_channels:
-
-        try:
-            await channel.send(LOCKDOWN_MSG)
-
-            await channel.set_permissions(
-                interaction.guild.default_role,
-                send_messages=False
-            )
-
-        except:
-            pass
-
-# -----------------------
-# /LIFTED
-# -----------------------
-@bot.tree.command(
-    name="lifted",
-    description="Remove lockdown"
-)
-async def lifted(interaction: discord.Interaction):
-
-    if not interaction.user.guild_permissions.administrator:
-
-        await interaction.response.send_message(
-            "❌ Admin only.",
-            ephemeral=True
-        )
-        return
-
-    await interaction.response.send_message(
-        "🔓 Removing lockdown..."
-    )
-
-    for channel in interaction.guild.text_channels:
-
-        try:
-            await channel.set_permissions(
-                interaction.guild.default_role,
-                send_messages=True
-            )
-
-            await channel.send(LIFTED_MSG)
-
-        except:
-            pass
-
-# -----------------------
-# SHOP VIEW
+# /SHOP
 # -----------------------
 class ShopView(discord.ui.View):
 
     def __init__(self):
-        super().__init__(timeout=None)
+        super().__init__(timeout=300)
 
     async def buy(self, interaction, role_id, cost):
 
-        user_id = interaction.user.id
-
-        if coins.get(user_id, 0) < cost:
+        if coins.get(interaction.user.id, 0) < cost:
             return False
 
         role = interaction.guild.get_role(role_id)
@@ -217,150 +115,107 @@ class ShopView(discord.ui.View):
         if role:
             await interaction.user.add_roles(role)
 
-        coins[user_id] -= cost
-
+        coins[interaction.user.id] -= cost
         return True
 
-    # -------------------
-    # BLOX BUTTON
-    # -------------------
-    @discord.ui.button(
-        label="🥭 Blox Fruits Fan (200)",
-        style=discord.ButtonStyle.success
-    )
-    async def blox(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
+    @discord.ui.button(label="🥭 Blox (200)", style=discord.ButtonStyle.green)
+    async def blox(self, interaction, button):
 
-        success = await self.buy(
-            interaction,
-            1502647506801000500,
-            200
-        )
+        await interaction.response.defer(ephemeral=True)
 
-        if not success:
+        ok = await self.buy(interaction, SHOP["blox"]["role_id"], SHOP["blox"]["cost"])
 
-            await interaction.response.send_message(
-                "❌ Not enough coins.",
-                ephemeral=True
-            )
+        if not ok:
+            await interaction.followup.send("❌ Not enough coins")
             return
 
-        await interaction.response.send_message(
-            "✅ Bought Blox Fruits role.",
-            ephemeral=True
-        )
+        await interaction.followup.send("✅ Bought Blox role")
 
-    # -------------------
-    # SAILOR BUTTON
-    # -------------------
-    @discord.ui.button(
-        label="🚢 Sailor Piece Fan (350)",
-        style=discord.ButtonStyle.primary
-    )
-    async def sailor(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
+    @discord.ui.button(label="🚢 Sailor (350)", style=discord.ButtonStyle.blurple)
+    async def sailor(self, interaction, button):
 
-        success = await self.buy(
-            interaction,
-            1502647995798261800,
-            350
-        )
+        await interaction.response.defer(ephemeral=True)
 
-        if not success:
+        ok = await self.buy(interaction, SHOP["sailor"]["role_id"], SHOP["sailor"]["cost"])
 
-            await interaction.response.send_message(
-                "❌ Not enough coins.",
-                ephemeral=True
-            )
+        if not ok:
+            await interaction.followup.send("❌ Not enough coins")
             return
 
-        await interaction.response.send_message(
-            "✅ Bought Sailor Piece role.",
-            ephemeral=True
-        )
+        await interaction.followup.send("✅ Bought Sailor role")
 
-    # -------------------
-    # WEALTHY BUTTON
-    # -------------------
-    @discord.ui.button(
-        label="💸 The Wealthy (700)",
-        style=discord.ButtonStyle.secondary
-    )
-    async def wealthy(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
+    @discord.ui.button(label="💸 Wealthy (700)", style=discord.ButtonStyle.grey)
+    async def wealthy(self, interaction, button):
 
-        success = await self.buy(
-            interaction,
-            1502648468664225792,
-            700
-        )
+        await interaction.response.defer(ephemeral=True)
 
-        if not success:
+        ok = await self.buy(interaction, SHOP["wealthy"]["role_id"], SHOP["wealthy"]["cost"])
 
-            await interaction.response.send_message(
-                "❌ Not enough coins.",
-                ephemeral=True
-            )
+        if not ok:
+            await interaction.followup.send("❌ Not enough coins")
             return
 
-        await interaction.response.send_message(
-            "✅ Bought Wealthy role.",
-            ephemeral=True
-        )
+        await interaction.followup.send("✅ Bought Wealthy role")
 
-# -----------------------
-# /SHOP
-# -----------------------
-@bot.tree.command(
-    name="shop",
-    description="Open the role shop"
-)
+@bot.tree.command(name="shop", description="Open shop")
 async def shop(interaction: discord.Interaction):
 
     embed = discord.Embed(
-        title="🥭 Trading Shop",
-        description="Earn coins by chatting and buy roles below!",
+        title="🥭 Shop",
+        description="Earn coins by chatting!",
         color=discord.Color.green()
     )
 
-    embed.add_field(
-        name="🥭 Blox Fruits Fan",
-        value="200 coins",
-        inline=False
-    )
+    embed.add_field(name="Blox", value="200 coins", inline=False)
+    embed.add_field(name="Sailor", value="350 coins", inline=False)
+    embed.add_field(name="Wealthy", value="700 coins", inline=False)
 
-    embed.add_field(
-        name="🚢 Sailor Piece Fan",
-        value="350 coins",
-        inline=False
-    )
-
-    embed.add_field(
-        name="💸 The Wealthy",
-        value="700 coins",
-        inline=False
-    )
-
-    await interaction.response.send_message(
-        embed=embed,
-        view=ShopView()
-    )
+    await interaction.response.send_message(embed=embed, view=ShopView())
 
 # -----------------------
-# START WEB SERVER
+# /LOCKDOWN
+# -----------------------
+@bot.tree.command(name="lockdown", description="Lock server")
+async def lockdown(interaction: discord.Interaction):
+
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ Admin only")
+        return
+
+    await interaction.response.defer()
+
+    for channel in interaction.guild.text_channels:
+        try:
+            await channel.send(LOCKDOWN_MSG)
+            await channel.set_permissions(interaction.guild.default_role, send_messages=False)
+        except:
+            pass
+
+    await interaction.followup.send("🔒 Locked down")
+
+# -----------------------
+# /LIFTED
+# -----------------------
+@bot.tree.command(name="lifted", description="Unlock server")
+async def lifted(interaction: discord.Interaction):
+
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ Admin only")
+        return
+
+    await interaction.response.defer()
+
+    for channel in interaction.guild.text_channels:
+        try:
+            await channel.send(LIFTED_MSG)
+            await channel.set_permissions(interaction.guild.default_role, send_messages=True)
+        except:
+            pass
+
+    await interaction.followup.send("🔓 Unlocked")
+
+# -----------------------
+# START BOT
 # -----------------------
 keep_alive()
-
-# -----------------------
-# RUN BOT
-# -----------------------
 bot.run(TOKEN)
