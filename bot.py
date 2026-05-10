@@ -3,12 +3,40 @@ from discord.ext import commands
 import random
 import os
 
+# -----------------------
+# KEEP RENDER ALIVE
+# -----------------------
+from flask import Flask
+from threading import Thread
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=10000)
+
+def keep_alive():
+    t = Thread(target=run_web)
+    t.start()
+
+# -----------------------
+# TOKEN
+# -----------------------
 TOKEN = os.getenv("TOKEN")
 
+# -----------------------
+# INTENTS
+# -----------------------
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
+# -----------------------
+# BOT
+# -----------------------
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # -----------------------
@@ -20,9 +48,20 @@ coins = {}
 # SHOP ROLES
 # -----------------------
 roles_shop = {
-    "blox": {"role_id": 1502647506801000500, "cost": 200},
-    "sailor": {"role_id": 1502647995798261800, "cost": 350},
-    "wealthy": {"role_id": 1502648468664225792, "cost": 700},
+    "blox": {
+        "role_id": 1502647506801000500,
+        "cost": 200
+    },
+
+    "sailor": {
+        "role_id": 1502647995798261800,
+        "cost": 350
+    },
+
+    "wealthy": {
+        "role_id": 1502648468664225792,
+        "cost": 700
+    }
 }
 
 # -----------------------
@@ -48,7 +87,7 @@ Thank you for your patience
 """
 
 # -----------------------
-# READY
+# READY EVENT
 # -----------------------
 @bot.event
 async def on_ready():
@@ -62,7 +101,7 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
 # -----------------------
-# COIN EARNING
+# MESSAGE EVENT
 # -----------------------
 @bot.event
 async def on_message(message):
@@ -72,13 +111,16 @@ async def on_message(message):
 
     user_id = message.author.id
 
-    # GIVE COINS
+    # GIVE RANDOM COINS
     coins[user_id] = coins.get(user_id, 0) + random.randint(3, 8)
 
 # -----------------------
 # /COINS
 # -----------------------
-@bot.tree.command(name="coins", description="Check your coins")
+@bot.tree.command(
+    name="coins",
+    description="Check your coins"
+)
 async def coinscmd(interaction: discord.Interaction):
 
     amount = coins.get(interaction.user.id, 0)
@@ -90,7 +132,10 @@ async def coinscmd(interaction: discord.Interaction):
 # -----------------------
 # /LOCKDOWN
 # -----------------------
-@bot.tree.command(name="lockdown", description="Lock the server")
+@bot.tree.command(
+    name="lockdown",
+    description="Lock the server"
+)
 async def lockdown(interaction: discord.Interaction):
 
     if not interaction.user.guild_permissions.administrator:
@@ -121,7 +166,10 @@ async def lockdown(interaction: discord.Interaction):
 # -----------------------
 # /LIFTED
 # -----------------------
-@bot.tree.command(name="lifted", description="Remove lockdown")
+@bot.tree.command(
+    name="lifted",
+    description="Remove lockdown"
+)
 async def lifted(interaction: discord.Interaction):
 
     if not interaction.user.guild_permissions.administrator:
@@ -174,7 +222,7 @@ class ShopView(discord.ui.View):
         return True
 
     # -------------------
-    # BLOX
+    # BLOX BUTTON
     # -------------------
     @discord.ui.button(
         label="🥭 Blox Fruits Fan (200)",
@@ -206,7 +254,7 @@ class ShopView(discord.ui.View):
         )
 
     # -------------------
-    # SAILOR
+    # SAILOR BUTTON
     # -------------------
     @discord.ui.button(
         label="🚢 Sailor Piece Fan (350)",
@@ -238,7 +286,7 @@ class ShopView(discord.ui.View):
         )
 
     # -------------------
-    # WEALTHY
+    # WEALTHY BUTTON
     # -------------------
     @discord.ui.button(
         label="💸 The Wealthy (700)",
@@ -272,7 +320,10 @@ class ShopView(discord.ui.View):
 # -----------------------
 # /SHOP
 # -----------------------
-@bot.tree.command(name="shop", description="Open the role shop")
+@bot.tree.command(
+    name="shop",
+    description="Open the role shop"
+)
 async def shop(interaction: discord.Interaction):
 
     embed = discord.Embed(
@@ -303,6 +354,11 @@ async def shop(interaction: discord.Interaction):
         embed=embed,
         view=ShopView()
     )
+
+# -----------------------
+# START WEB SERVER
+# -----------------------
+keep_alive()
 
 # -----------------------
 # RUN BOT
